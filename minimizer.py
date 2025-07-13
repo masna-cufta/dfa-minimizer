@@ -1,7 +1,7 @@
 import sys
 from collections import deque
 
-def parseInput(): 
+def parse_input():  
     lines = []
     for line in sys.stdin:
         lines.append(line.strip())
@@ -23,9 +23,9 @@ def parseInput():
 
     return states, alphabet, accept_states, start_state, transitions
 
-def removeUnreachableStates(states, alphabet, accept_states, start_state, transitions):
+def remove_unreachable_states(states, alphabet, accept_states, start_state, transitions):
     reachable = set()
-    queue = deque([start_state])  
+    queue = deque([start_state])
 
     while queue:
         state = queue.popleft()
@@ -37,23 +37,13 @@ def removeUnreachableStates(states, alphabet, accept_states, start_state, transi
             if neighbor not in reachable:
                 queue.append(neighbor)
 
-    new_states = []
-    for s in states:
-        if s in reachable:
-            new_states.append(s)
-
-    new_accept_states = []
-    for s in accept_states:
-        if s in reachable:
-            new_accept_states.append(s)
-
-    new_transitions = {}
-    for s in new_states:
-        new_transitions[s] = transitions[s]
+    new_states = [s for s in states if s in reachable]
+    new_accept_states = [s for s in accept_states if s in reachable]
+    new_transitions = {s: transitions[s] for s in new_states}
 
     return new_states, new_accept_states, new_transitions
 
-def minimizeDFA(states, alphabet, accept_states, start_state, transitions):
+def minimize_dfa(states, alphabet, accept_states, start_state, transitions):
     groups = []
     group1 = []
     group2 = []
@@ -79,26 +69,26 @@ def minimizeDFA(states, alphabet, accept_states, start_state, transitions):
             for state in group:
                 placed = False
                 for subgroup in subgroups:
-                    ex = subgroup[0]
+                    example = subgroup[0]
                     same = True
                     for symbol in alphabet:
-                        dest1 = transitions[state][symbol]
-                        dest2 = transitions[ex][symbol]
+                        target1 = transitions[state][symbol]
+                        target2 = transitions[example][symbol]
 
-                        group1_for = None
-                        group2_for = None
+                        group_for_target1 = None
+                        group_for_target2 = None
                         for g in groups:
-                            if dest1 in g:
-                                group1_for = g
-                            if dest2 in g:
-                                group2_for = g
+                            if target1 in g:
+                                group_for_target1 = g
+                            if target2 in g:
+                                group_for_target2 = g
 
-                        if group1_for != group2_for:
+                        if group_for_target1 != group_for_target2:
                             same = False
                             break
 
                     if same:
-                        subgroup.append(state) 
+                        subgroup.append(state)
                         placed = True
                         break
 
@@ -112,38 +102,40 @@ def minimizeDFA(states, alphabet, accept_states, start_state, transitions):
 
         groups = new_groups
 
-    mapping = {}
+    replacements = {}
     for group in groups:
         representative = min(group)
         for s in group:
-            mapping[s] = representative
+            replacements[s] = representative
 
-    new_states_set = set()
-    for s in mapping.values():
-        new_states_set.add(s)
+    new_states_set = set(replacements.values())
     new_states = sorted(new_states_set)
 
-    new_accept_set = set()
-    for s in accept_states:
-        new_accept_set.add(mapping[s])
-    new_accept = sorted(new_accept_set)
+    new_accept_set = {replacements[s] for s in accept_states}
+    new_accept_states = sorted(new_accept_set)
 
-    new_start = mapping[start_state]
+    new_start_state = replacements[start_state]
 
     new_transitions = {}
     for state in new_states:
         new_transitions[state] = {}
         for symbol in alphabet:
-            old_dest = None
-            for s in transitions: 
-                if mapping[s] == state:
-                    old_dest = transitions[s][symbol]
+            old_target = None
+            for s in transitions:
+                if replacements[s] == state:
+                    old_target = transitions[s][symbol]
                     break
-            new_transitions[state][symbol] = mapping[old_dest]
+            new_transitions[state][symbol] = replacements[old_target]
 
-    return new_states, alphabet, new_accept, new_start, new_transitions
+    return new_states, alphabet, new_accept_states, new_start_state, new_transitions
 
-def printDFA(states, alphabet, accept_states, start_state, transitions): 
+def main():
+    states, alphabet, accept_states, start_state, transitions = parse_input()
+
+    states, accept_states, transitions = remove_unreachable_states(states, alphabet, accept_states, start_state, transitions)
+
+    states, alphabet, accept_states, start_state, transitions = minimize_dfa(states, alphabet, accept_states, start_state, transitions)
+
     print(','.join(states))
     print(','.join(alphabet))
     print(','.join(accept_states))
@@ -153,12 +145,6 @@ def printDFA(states, alphabet, accept_states, start_state, transitions):
             dest = transitions[state][symbol]
             line = state + "," + symbol + "->" + dest
             print(line)
-
-def main():
-    states, alphabet, accept_states, start_state, transitions = parseInput()
-    states, accept_states, transitions = removeUnreachableStates(states, alphabet, accept_states, start_state, transitions)
-    states, alphabet, accept_states, start_state, transitions = minimizeDFA(states, alphabet, accept_states, start_state, transitions)
-    printDFA(states, alphabet, accept_states, start_state, transitions)
 
 if __name__ == '__main__':
     main()
